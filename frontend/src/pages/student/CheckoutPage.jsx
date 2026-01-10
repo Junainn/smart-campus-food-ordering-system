@@ -27,8 +27,10 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import PaymentIcon from '@mui/icons-material/Payment';
 import LocalDiningIcon from '@mui/icons-material/LocalDining';
+import PhoneIcon from '@mui/icons-material/Phone';
 import { useCart } from '../../context/CartContext';
-import { placeOrder } from '../../services/apiService';
+import { placeOrder, getVendorDetails } from '../../services/apiService';
+import { useEffect } from 'react';
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -36,6 +38,22 @@ const CheckoutPage = () => {
   const [transactionId, setTransactionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [vendor, setVendor] = useState(null);
+
+  useEffect(() => {
+    if (cart.vendorId) {
+      fetchVendorDetails();
+    }
+  }, [cart.vendorId]);
+
+  const fetchVendorDetails = async () => {
+    try {
+      const response = await getVendorDetails(cart.vendorId);
+      setVendor(response.data);
+    } catch (error) {
+      console.error('Failed to fetch vendor details:', error);
+    }
+  };
 
   const handlePlaceOrder = async () => {
     if (!transactionId.trim()) {
@@ -249,7 +267,20 @@ const CheckoutPage = () => {
             </Box>
 
             <Alert severity="info" sx={{ mb: 3 }}>
-              Send ৳{getTotalPrice()} to the vendor via bKash/Nagad and enter the transaction ID below.
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                Send ৳{getTotalPrice()} to the vendor via bKash/Nagad
+              </Typography>
+              {vendor?.phone && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <PhoneIcon sx={{ fontSize: 18 }} />
+                  <Typography variant="body2">
+                    <strong>Vendor Number:</strong> {vendor.phone}
+                  </Typography>
+                </Box>
+              )}
+              <Typography variant="body2">
+                Then enter the transaction ID below.
+              </Typography>
             </Alert>
 
             <TextField

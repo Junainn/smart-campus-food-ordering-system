@@ -25,6 +25,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import StarIcon from '@mui/icons-material/Star';
+import ReviewsIcon from '@mui/icons-material/Reviews';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
@@ -106,6 +107,14 @@ const VendorDashboard = () => {
       path: '/vendor/orders',
       badge: stats?.pendingOrders,
       stats: stats ? `${stats.pendingOrders} pending` : '',
+    },
+    {
+      title: 'Reviews',
+      description: 'Read customer feedback and reviews',
+      icon: <ReviewsIcon sx={{ fontSize: 50 }} />,
+      color: '#27AE60',
+      path: '/vendor/reviews',
+      stats: stats ? `${stats.totalReviews} total reviews` : '',
     },
     {
       title: 'Availability',

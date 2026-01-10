@@ -1,78 +1,132 @@
 import { HfInference } from '@huggingface/inference';
 
 /**
- * Analyze sentiment of text using Hugging Face model
- * Supports both Bangla and English text
+ * Analyze sentiment using HuggingFace AI model
+ * @param {string} text - The text to analyze
+ * @returns {Promise<string>} - Sentiment label: 'positive', 'negative', or 'neutral'
+ */
+const analyzeWithHuggingFace = async (text) => {
+  const hf = new HfInference(process.env.HUGGINGFACE_API_KEY);
+  
+  console.log('🤖 [HuggingFace] Analyzing with AI model...');
+  
+  // Use multilingual model - better for Bangla/English mix
+  const result = await hf.textClassification({
+    model: 'cardiffnlp/twitter-xlm-roberta-base-sentiment-multilingual',
+    inputs: text,
+  });
+  
+  console.log('🤖 [HuggingFace] API Response:', JSON.stringify(result));
+  
+  // Result format: [{ label: 'positive', score: 0.98 }, ...]
+  const topResult = result[0];
+  const label = topResult.label.toLowerCase();
+  
+  // Map label to our format
+  let sentiment;
+  if (label.includes('positive') || label.includes('pos')) {
+    sentiment = 'positive';
+  } else if (label.includes('negative') || label.includes('neg')) {
+    sentiment = 'negative';
+  } else {
+    sentiment = 'neutral';
+  }
+  
+  console.log(`✅ [HuggingFace] Result: ${sentiment} (confidence: ${(topResult.score * 100).toFixed(1)}%)`);
+  return sentiment;
+};
+
+/**
+ * Analyze sentiment using keyword-based analysis (fallback method)
+ * @param {string} text - The text to analyze
+ * @returns {string} - Sentiment label: 'positive', 'negative', or 'neutral'
+ */
+const analyzeWithKeywords = (text) => {
+  console.log('🔍 [Keywords] Using keyword-based fallback analysis...');
+  
+  const lowerText = text.toLowerCase();
+  
+  // Positive keywords (English + Bangla romanized)
+  const positiveWords = [
+    'good', 'great', 'excellent', 'amazing', 'awesome', 'best', 'love', 'loved',
+    'wonderful', 'fantastic', 'perfect', 'delicious', 'tasty', 'yummy', 'fresh',
+    'nice', 'super', 'outstanding', 'brilliant', 'incredible', 'fabulous',
+    'bhalo', 'darun', 'sundor', 'mishti', 'valo', 'khub bhalo', 'moja', 'shundor'
+  ];
+  
+  // Negative keywords (English + Bangla romanized)
+  const negativeWords = [
+    'bad', 'terrible', 'horrible', 'awful', 'worst', 'hate', 'hated', 'disgusting',
+    'poor', 'nasty', 'gross', 'disappointing', 'pathetic', 'rubbish', 'useless',
+    'cold', 'stale', 'burnt', 'undercooked', 'overcooked', 'bland', 'tasteless',
+    'kharap', 'baje', 'bekar', 'gandu', 'nongra', 'bekar'
+  ];
+  
+  let positiveCount = 0;
+  let negativeCount = 0;
+  
+  // Count positive words
+  positiveWords.forEach(word => {
+    if (lowerText.includes(word)) {
+      positiveCount++;
+    }
+  });
+  
+  // Count negative words
+  negativeWords.forEach(word => {
+    if (lowerText.includes(word)) {
+      negativeCount++;
+    }
+  });
+  
+  // Also check rating emojis
+  if (lowerText.includes('👍') || lowerText.includes('😊') || lowerText.includes('❤️')) {
+    positiveCount += 2;
+  }
+  if (lowerText.includes('👎') || lowerText.includes('😞') || lowerText.includes('😠')) {
+    negativeCount += 2;
+  }
+  
+  let sentiment;
+  if (positiveCount > negativeCount) {
+    sentiment = 'positive';
+  } else if (negativeCount > positiveCount) {
+    sentiment = 'negative';
+  } else {
+    sentiment = 'neutral';
+  }
+  
+  console.log('🏷️  [Keywords] Positive words found:', positiveCount);
+  console.log('🏷️  [Keywords] Negative words found:', negativeCount);
+  console.log('✨ [Keywords] Result:', sentiment);
+  
+  return sentiment;
+};
+
+/**
+ * Main sentiment analysis function with HuggingFace + fallback
+ * Tries HuggingFace AI first, falls back to keywords if it fails
  * @param {string} text - The text to analyze
  * @returns {Promise<string>} - Sentiment label: 'positive', 'negative', or 'neutral'
  */
 export const analyzeSentiment = async (text) => {
   try {
     console.log('🔍 [Sentiment Analysis] Starting analysis for text:', text.substring(0, 50) + '...');
-    console.log('🔑 [Sentiment Analysis] API Key present:', !!process.env.HUGGINGFACE_API_KEY);
-    console.log('🔑 [Sentiment Analysis] API Key (first 10 chars):', process.env.HUGGINGFACE_API_KEY?.substring(0, 10));
     
-    // Use the Inference API directly (not the deprecated api-inference endpoint)
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/cardiffnlp/twitter-xlm-roberta-base-sentiment',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          'Content-Type': 'application/json',
-          'x-use-cache': 'false', // Don't use cache, get fresh results
-        },
-        body: JSON.stringify({ 
-          inputs: text,
-          options: {
-            wait_for_model: true, // Wait for model to load if needed
-          }
-        }),
-      }
-    );
-
-    console.log('📡 [Sentiment Analysis] Response status:', response.status);
-    console.log('📡 [Sentiment Analysis] Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ [Sentiment Analysis] API error response:', errorText);
-      throw new Error(`API responded with status ${response.status}: ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ [Sentiment Analysis] Raw API response:', JSON.stringify(result, null, 2));
-
-    // The model returns labels like 'positive', 'negative', 'neutral'
-    // Response format: [[{label: "positive", score: 0.99}, {label: "negative", score: 0.01}]]
-    if (result && Array.isArray(result) && result[0] && Array.isArray(result[0])) {
-      const topResult = result[0][0];
-      const label = topResult.label.toLowerCase();
-      console.log('🏷️  [Sentiment Analysis] Detected label:', label, 'Score:', topResult.score);
-
-      // Map model labels to our sentiment enum
-      let sentiment;
-      if (label.includes('positive') || label.includes('pos')) {
-        sentiment = 'positive';
-      } else if (label.includes('negative') || label.includes('neg')) {
-        sentiment = 'negative';
-      } else {
-        sentiment = 'neutral';
-      }
+    // Try HuggingFace AI first
+    try {
+      const sentiment = await analyzeWithHuggingFace(text);
+      return sentiment;
+    } catch (hfError) {
+      console.warn('⚠️  [Sentiment Analysis] HuggingFace failed:', hfError.message);
+      console.log('🔄 [Sentiment Analysis] Switching to keyword-based fallback...');
       
-      console.log('✨ [Sentiment Analysis] Final sentiment:', sentiment);
+      // Fallback to keyword analysis
+      const sentiment = analyzeWithKeywords(text);
       return sentiment;
     }
-
-    console.log('⚠️  [Sentiment Analysis] No result from API, defaulting to neutral');
-    return 'neutral';
   } catch (error) {
-    console.error('❌ [Sentiment Analysis ERROR] Full error details:');
-    console.error('   - Error name:', error.name);
-    console.error('   - Error message:', error.message);
-    console.error('   - Error stack:', error.stack);
-    // Return neutral as fallback if API fails
-    console.log('🔄 [Sentiment Analysis] Returning neutral as fallback');
+    console.error('❌ [Sentiment Analysis ERROR]:', error.message);
     return 'neutral';
   }
 };

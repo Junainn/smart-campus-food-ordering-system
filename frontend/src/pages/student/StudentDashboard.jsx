@@ -1,36 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Chip,
-  Box,
-  CircularProgress,
-  Badge,
-  alpha,
-  Avatar,
-} from '@mui/material';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbDownIcon from '@mui/icons-material/ThumbDown';
-import RemoveIcon from '@mui/icons-material/Remove';
-import RestaurantMenuIcon from '@mui/icons-material/RestaurantMenu';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import LocalDiningIcon from '@mui/icons-material/LocalDining';
+import { 
+  ShoppingCart, 
+  LogOut, 
+  Search, 
+  MapPin, 
+  Clock,
+  TrendingUp,
+  ChevronRight,
+  Package
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { getAvailableVendors } from '../../services/apiService';
+import { 
+  VendorCard, 
+  EmptyState, 
+  GridSkeleton,
+  Badge as CustomBadge 
+} from '../../components/shared';
+import { cn } from '../../utils/cn';
 
 const StudentDashboard = () => {
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const { user, logout } = useAuth();
   const { getTotalItems } = useCart();
   const navigate = useNavigate();
@@ -54,221 +48,160 @@ const StudentDashboard = () => {
     navigate(`/vendor/${vendorId}`);
   };
 
+  // Filter vendors based on search query
+  const filteredVendors = vendors.filter(vendor =>
+    vendor.stallName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    vendor.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <>
-      <AppBar 
-        position="static" 
-        elevation={0}
-        sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        }}
-      >
-        <Toolbar>
-          <LocalDiningIcon sx={{ mr: 1, fontSize: 28 }} />
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-            CUET Food Hub
-          </Typography>
-          <Button 
-            color="inherit" 
-            onClick={() => navigate('/orders')}
-            sx={{ 
-              mr: 1,
-              '&:hover': { backgroundColor: alpha('#ffffff', 0.1) }
-            }}
-          >
-            My Orders
-          </Button>
-          <Badge 
-            badgeContent={getTotalItems()} 
-            color="warning" 
-            sx={{ mx: 2 }}
-          >
-            <Button 
-              color="inherit" 
-              onClick={() => navigate('/checkout')}
-              sx={{ '&:hover': { backgroundColor: alpha('#ffffff', 0.1) } }}
-            >
-              <ShoppingCartIcon />
-            </Button>
-          </Badge>
-          <Button 
-            color="inherit" 
-            onClick={logout}
-            sx={{ '&:hover': { backgroundColor: alpha('#ffffff', 0.1) } }}
-          >
-            Logout
-          </Button>
-        </Toolbar>
-      </AppBar>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Bar */}
+      <nav className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-2">
+              <div className="text-2xl">🍽️</div>
+              <span className="font-heading font-bold text-xl text-gray-900">
+                CUET Food Hub
+              </span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/orders')}
+                className="hidden sm:flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-primary-500 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Package size={20} />
+                <span className="font-medium">My Orders</span>
+              </button>
+
+              <button
+                onClick={() => navigate('/checkout')}
+                className="relative p-2 text-gray-700 hover:text-primary-500 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <ShoppingCart size={24} />
+                {getTotalItems() > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {getTotalItems()}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={logout}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut size={20} />
+                <span className="hidden sm:inline font-medium">Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
 
       {/* Hero Section */}
-      <Box sx={{ 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        color: 'white',
-        py: 6,
-        mb: 4,
-      }}>
-        <Container>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ 
-              width: 64, 
-              height: 64, 
-              bgcolor: alpha('#ffffff', 0.2),
-              fontSize: '1.5rem',
-              fontWeight: 700,
-            }}>
+      <div className="bg-gradient-to-br from-primary-500 via-primary-600 to-secondary-500 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl font-bold">
               {user?.name?.charAt(0).toUpperCase()}
-            </Avatar>
-            <Box>
-              <Typography variant="h3" sx={{ fontWeight: 700, mb: 1 }}>
+            </div>
+            <div>
+              <h1 className="font-heading font-bold text-3xl sm:text-4xl mb-2">
                 Welcome back, {user?.name?.split(' ')[0]}! 👋
-              </Typography>
-              <Typography variant="h6" sx={{ opacity: 0.9 }}>
+              </h1>
+              <p className="text-lg text-white/90">
                 Discover delicious meals from campus vendors
-              </Typography>
-            </Box>
-          </Box>
-        </Container>
-      </Box>
+              </p>
+            </div>
+          </div>
 
-      <Container sx={{ mb: 6 }}>
+          {/* Search Bar */}
+          <div className="max-w-2xl">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                placeholder="Search for vendors or cuisines..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <Typography variant="h4" sx={{ mb: 3, fontWeight: 700 }}>
-          🍽️ Available Vendors
-        </Typography>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Section Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="text-primary-500" size={24} />
+            <h2 className="font-heading font-bold text-2xl text-gray-900">
+              Available Vendors
+            </h2>
+          </div>
+          <span className="text-gray-600 font-medium">
+            {filteredVendors.length} vendors open now
+          </span>
+        </div>
 
-        {loading ? (
-          <Box display="flex" justifyContent="center" mt={6}>
-            <CircularProgress size={60} thickness={4} />
-          </Box>
-        ) : vendors.length === 0 ? (
-          <Box sx={{ 
-            textAlign: 'center', 
-            py: 8,
-            background: alpha('#667eea', 0.05),
-            borderRadius: 4,
-          }}>
-            <RestaurantMenuIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary">
-              No vendors are currently open
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Please check back later for delicious food options!
-            </Typography>
-          </Box>
-        ) : (
-          <Grid container spacing={3}>
-            {vendors.map((vendor) => (
-              <Grid item xs={12} sm={6} md={4} key={vendor._id}>
-                <Card 
-                  sx={{ 
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    position: 'relative',
-                    overflow: 'visible',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 6,
-                      background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4)',
-                      borderRadius: '16px 16px 0 0',
-                    },
-                  }}
+        {/* Loading State */}
+        {loading && <GridSkeleton count={6} columns={3} />}
+
+        {/* Empty State */}
+        {!loading && filteredVendors.length === 0 && (
+          <EmptyState
+            type={searchQuery ? 'search' : 'default'}
+            title={searchQuery ? 'No vendors found' : 'No vendors available'}
+            message={
+              searchQuery
+                ? 'Try adjusting your search query'
+                : 'No vendors are currently open. Please check back later!'
+            }
+            action={
+              searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="btn-primary"
                 >
-                  <CardContent sx={{ flexGrow: 1, pt: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar sx={{ 
-                        bgcolor: 'primary.main',
-                        mr: 2,
-                        width: 48,
-                        height: 48,
-                      }}>
-                        <RestaurantMenuIcon />
-                      </Avatar>
-                      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        {vendor.stallName}
-                      </Typography>
-                    </Box>
-                    
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary" 
-                      sx={{ mb: 2, minHeight: 40 }}
-                    >
-                      {vendor.description}
-                    </Typography>
-                    
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 0.5,
-                      mb: 2,
-                      color: 'text.secondary',
-                    }}>
-                      <AccessTimeIcon sx={{ fontSize: 18 }} />
-                      <Typography variant="caption">
-                        {vendor.openingHours} - {vendor.closingHours}
-                      </Typography>
-                    </Box>
-                    
-                    <Box display="flex" gap={1} flexWrap="wrap">
-                      {vendor.reviewSummary?.positive > 0 && (
-                        <Chip
-                          icon={<ThumbUpIcon />}
-                          label={vendor.reviewSummary.positive}
-                          color="success"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      )}
-                      {vendor.reviewSummary?.neutral > 0 && (
-                        <Chip
-                          icon={<RemoveIcon />}
-                          label={vendor.reviewSummary.neutral}
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      )}
-                      {vendor.reviewSummary?.negative > 0 && (
-                        <Chip
-                          icon={<ThumbDownIcon />}
-                          label={vendor.reviewSummary.negative}
-                          color="error"
-                          size="small"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      )}
-                    </Box>
-                  </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0 }}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      onClick={() => handleVendorClick(vendor._id)}
-                      startIcon={<RestaurantMenuIcon />}
-                      sx={{
-                        py: 1.2,
-                        fontWeight: 600,
-                        background: 'linear-gradient(45deg, #FF6B6B, #FF8E53)',
-                        '&:hover': {
-                          background: 'linear-gradient(45deg, #FF8E53, #FF6B6B)',
-                        },
-                      }}
-                    >
-                      View Menu
-                    </Button>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+                  Clear Search
+                </button>
+              )
+            }
+          />
         )}
-      </Container>
-    </>
+
+        {/* Vendors Grid */}
+        {!loading && filteredVendors.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredVendors.map((vendor) => (
+              <VendorCard
+                key={vendor._id}
+                vendor={{
+                  name: vendor.stallName,
+                  description: vendor.description,
+                  image: vendor.image,
+                  rating: vendor.rating || 4.5,
+                  reviewCount: 
+                    (vendor.reviewSummary?.positive || 0) +
+                    (vendor.reviewSummary?.neutral || 0) +
+                    (vendor.reviewSummary?.negative || 0),
+                  location: 'CUET Campus',
+                  preparationTime: '20-30',
+                  isAvailable: true,
+                }}
+                onClick={() => handleVendorClick(vendor._id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

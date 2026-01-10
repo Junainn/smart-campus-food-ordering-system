@@ -31,6 +31,10 @@ router.post(
   [
     body('vendorId').notEmpty().withMessage('Vendor ID is required'),
     body('items').isArray({ min: 1 }).withMessage('At least one item is required'),
+    body('items.*.menuItemId').notEmpty().withMessage('Menu item ID is required'),
+    body('items.*.name').notEmpty().withMessage('Item name is required'),
+    body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
+    body('items.*.priceAtOrder').isNumeric().withMessage('Price must be a number'),
     body('totalPrice').isNumeric().withMessage('Total price must be a number'),
     body('transactionId').trim().notEmpty().withMessage('Transaction ID is required'),
   ],

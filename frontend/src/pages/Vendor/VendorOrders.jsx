@@ -29,6 +29,11 @@ import {
   TableRow,
   Paper,
   Badge,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  InputAdornment,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -36,6 +41,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import PhoneIcon from '@mui/icons-material/Phone';
+import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import SortIcon from '@mui/icons-material/Sort';
 import {
   getVendorOrders,
   verifyOrder,
@@ -50,6 +58,9 @@ const VendorOrders = () => {
   const [rejectDialog, setRejectDialog] = useState({ open: false, orderId: null });
   const [rejectionReason, setRejectionReason] = useState('');
   const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('date-desc');
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -59,11 +70,12 @@ const VendorOrders = () => {
   const fetchOrders = async () => {
     try {
       const response = await getVendorOrders(page);
-      setOrders(response.data.orders);
-      setTotalPages(response.data.totalPages);
+      setOrders(response.data.orders || []);
+      setTotalPages(response.data.totalPages || 1);
       setError('');
     } catch (err) {
       setError('Failed to load orders');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
@@ -170,6 +182,87 @@ const VendorOrders = () => {
       </Box>
 
       <Container sx={{ mb: 6 }}>
+        {/* Filter, Sort, and Search Controls */}
+        <Paper
+          elevation={2}
+          sx={{
+            p: 2.5,
+            mb: 3,
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)',
+          }}
+        >
+          <Box display="flex" gap={2} flexWrap="wrap" alignItems="center">
+            {/* Status Filter */}
+            <FormControl sx={{ minWidth: 180 }}>
+              <InputLabel id="status-filter-label">
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <FilterListIcon fontSize="small" />
+                  Status Filter
+                </Box>
+              </InputLabel>
+              <Select
+                labelId="status-filter-label"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                label="Status Filter"
+                sx={{ borderRadius: 2 }}
+              >
+                <MenuItem value="All">All Orders</MenuItem>
+                <MenuItem value="Pending">Pending</MenuItem>
+                <MenuItem value="Accepted">Accepted</MenuItem>
+                <MenuItem value="Processing">Processing</MenuItem>
+                <MenuItem value="Ready">Ready</MenuItem>
+                <MenuItem value="Completed">Completed</MenuItem>
+                <MenuItem value="Rejected">Rejected</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Sort By */}
+            <FormControl sx={{ minWidth: 180 }}>
+              <InputLabel id="sort-by-label">
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  <SortIcon fontSize="small" />
+                  Sort By
+                </Box>
+              </InputLabel>
+              <Select
+                labelId="sort-by-label"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                label="Sort By"
+                sx={{ borderRadius: 2 }}
+              >
+                <MenuItem value="date-desc">Date: Newest First</MenuItem>
+                <MenuItem value="date-asc">Date: Oldest First</MenuItem>
+                <MenuItem value="amount-desc">Amount: High to Low</MenuItem>
+                <MenuItem value="amount-asc">Amount: Low to High</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Search by Student Name */}
+            <TextField
+              placeholder="Search by student name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                minWidth: 250,
+                flexGrow: 1,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            />
+          </Box>
+        </Paper>
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
@@ -196,155 +289,203 @@ const VendorOrders = () => {
           </Box>
         ) : (
           <>
-            <Grid container spacing={3}>
-              {orders.map((order) => (
-                <Grid item xs={12} key={order._id}>
-                  <Card
+            {(() => {
+              // Calculate filtered and sorted orders once
+              const filteredOrders = (orders || [])
+                .filter((order) => statusFilter === 'All' || order.status === statusFilter)
+                .filter(
+                  (order) =>
+                    searchQuery === '' ||
+                    order.studentId?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+                )
+                .sort((a, b) => {
+                  if (sortBy === 'date-desc') {
+                    return new Date(b.createdAt) - new Date(a.createdAt);
+                  } else if (sortBy === 'date-asc') {
+                    return new Date(a.createdAt) - new Date(b.createdAt);
+                  } else if (sortBy === 'amount-desc') {
+                    return b.totalPrice - a.totalPrice;
+                  } else if (sortBy === 'amount-asc') {
+                    return a.totalPrice - b.totalPrice;
+                  }
+                  return 0;
+                });
+
+              // Show empty state if no matches
+              if (filteredOrders.length === 0) {
+                return (
+                  <Box
                     sx={{
-                      position: 'relative',
-                      overflow: 'visible',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: 6,
-                        background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4)',
-                        borderRadius: '16px 16px 0 0',
-                      },
+                      textAlign: 'center',
+                      py: 8,
+                      background: alpha('#667eea', 0.05),
+                      borderRadius: 4,
                     }}
                   >
-                    <CardContent sx={{ pt: 3 }}>
-                      <Box
+                    <FilterListIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
+                    <Typography variant="h6" color="text.secondary">
+                      No orders match your filters
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Try adjusting your search or filter criteria
+                    </Typography>
+                  </Box>
+                );
+              }
+
+              // Render filtered orders
+              return (
+                <Grid container spacing={3}>
+                  {filteredOrders.map((order) => (
+                    <Grid item xs={12} key={order._id}>
+                      <Card
                         sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          mb: 2,
+                          position: 'relative',
+                          overflow: 'visible',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 6,
+                            background: 'linear-gradient(90deg, #FF6B6B, #4ECDC4)',
+                            borderRadius: '16px 16px 0 0',
+                          },
                         }}
                       >
-                        <Box>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
-                            Order #{order._id.slice(-8).toUpperCase()}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {order.studentId?.name}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                            <PhoneIcon sx={{ fontSize: 16 }} />
-                            <Typography variant="caption">{order.studentId?.phone}</Typography>
+                        <CardContent sx={{ pt: 3 }}>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'flex-start',
+                              mb: 2,
+                            }}
+                          >
+                            <Box>
+                              <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+                                Order #{order._id.slice(-8).toUpperCase()}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {order.studentId?.name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                                <PhoneIcon sx={{ fontSize: 16 }} />
+                                <Typography variant="caption">{order.studentId?.phone}</Typography>
+                              </Box>
+                            </Box>
+                            <Chip
+                              label={order.status}
+                              color={getStatusColor(order.status)}
+                              sx={{ fontWeight: 600 }}
+                            />
                           </Box>
-                        </Box>
-                        <Chip
-                          label={order.status}
-                          color={getStatusColor(order.status)}
-                          sx={{ fontWeight: 600 }}
-                        />
-                      </Box>
 
-                      <TableContainer component={Paper} sx={{ mb: 2, bgcolor: alpha('#667eea', 0.02) }}>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell><strong>Item</strong></TableCell>
-                              <TableCell align="center"><strong>Qty</strong></TableCell>
-                              <TableCell align="right"><strong>Price</strong></TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {order.items.map((item, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell>{item.name}</TableCell>
-                                <TableCell align="center">{item.quantity}</TableCell>
-                                <TableCell align="right">৳{item.priceAtOrder * item.quantity}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                          <TableContainer component={Paper} sx={{ mb: 2, bgcolor: alpha('#667eea', 0.02) }}>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell><strong>Item</strong></TableCell>
+                                  <TableCell align="center"><strong>Qty</strong></TableCell>
+                                  <TableCell align="right"><strong>Price</strong></TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {order.items.map((item, idx) => (
+                                  <TableRow key={idx}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell align="center">{item.quantity}</TableCell>
+                                    <TableCell align="right">৳{item.priceAtOrder * item.quantity}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
 
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          p: 2,
-                          bgcolor: alpha('#4ECDC4', 0.1),
-                          borderRadius: 2,
-                          mb: 2,
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="caption" color="text.secondary">
-                            Transaction ID
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {order.transactionId}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ textAlign: 'right' }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Total
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                            ৳{order.totalPrice}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {order.status === 'Pending' && (
-                          <>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              size="small"
-                              startIcon={<CheckCircleIcon />}
-                              onClick={() => handleAccept(order._id)}
-                            >
-                              Accept
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              color="error"
-                              size="small"
-                              startIcon={<CancelIcon />}
-                              onClick={() => setRejectDialog({ open: true, orderId: order._id })}
-                            >
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        {order.status === 'Accepted' && (
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleStatusUpdate(order._id, 'Processing')}
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              p: 2,
+                              bgcolor: alpha('#4ECDC4', 0.1),
+                              borderRadius: 2,
+                              mb: 2,
+                            }}
                           >
-                            Start Processing
-                          </Button>
-                        )}
-                        {order.status === 'Processing' && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            onClick={() => handleStatusUpdate(order._id, 'Ready')}
-                          >
-                            Mark as Ready
-                          </Button>
-                        )}
-                      </Box>
+                            <Box>
+                              <Typography variant="caption" color="text.secondary">
+                                Transaction ID
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {order.transactionId}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography variant="caption" color="text.secondary">
+                                Total
+                              </Typography>
+                              <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
+                                ৳{order.totalPrice}
+                              </Typography>
+                            </Box>
+                          </Box>
 
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-                        Ordered: {new Date(order.createdAt).toLocaleString()}
-                      </Typography>
-                    </CardContent>
-                  </Card>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {order.status === 'Pending' && (
+                              <>
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  size="small"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() => handleAccept(order._id)}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  startIcon={<CancelIcon />}
+                                  onClick={() => setRejectDialog({ open: true, orderId: order._id })}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            {order.status === 'Accepted' && (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => handleStatusUpdate(order._id, 'Processing')}
+                              >
+                                Start Processing
+                              </Button>
+                            )}
+                            {order.status === 'Processing' && (
+                              <Button
+                                variant="contained"
+                                color="success"
+                                size="small"
+                                onClick={() => handleStatusUpdate(order._id, 'Ready')}
+                              >
+                                Mark as Ready
+                              </Button>
+                            )}
+                          </Box>
+
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                            Ordered: {new Date(order.createdAt).toLocaleString()}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
+              );
+            })()}
 
             {totalPages > 1 && (
               <Box display="flex" justifyContent="center" mt={4}>

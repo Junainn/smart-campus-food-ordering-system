@@ -21,6 +21,7 @@ import VendorRegister from './pages/vendor/VendorRegister';
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import MenuManagement from './pages/vendor/MenuManagement';
 import VendorOrders from './pages/vendor/VendorOrders';
+import VendorReviews from './pages/vendor/VendorReviews';
 import AvailabilitySettings from './pages/vendor/AvailabilitySettings';
 
 // Components
@@ -277,6 +278,14 @@ function App() {
                   element={
                     <PrivateRoute role="vendor">
                       <VendorOrders />
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path="/vendor/reviews"
+                  element={
+                    <PrivateRoute role="vendor">
+                      <VendorReviews />
                     </PrivateRoute>
                   }
                 />

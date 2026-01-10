@@ -12,6 +12,16 @@ dist
 dist-ssr
 *.local
 
+# Ignore all markdown files
+*.md
+
+# But keep README
+!README.md
+
+# Ignore PowerShell scripts
+*.ps1
+
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

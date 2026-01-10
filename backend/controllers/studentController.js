@@ -246,37 +246,49 @@ export const submitReview = async (req, res) => {
       return res.status(400).json({ message: 'Review already submitted for this order' });
     }
 
-    // Analyze sentiment with retry
-    console.log('📝 [Submit Review] Starting sentiment analysis for comment:', comment);
-    const sentiment = await analyzeSentimentWithRetry(comment);
-    console.log('📝 [Submit Review] Sentiment analysis result:', sentiment);
-
-    // Create review
+    // Create review immediately with pending sentiment (fast response to user)
+    console.log('📝 [Submit Review] Creating review with pending sentiment...');
     const review = await Review.create({
       orderId,
       studentId: req.student._id,
       vendorId: order.vendorId,
       rating,
       comment,
-      sentiment,
+      sentiment: 'pending', // Will be updated by background process
     });
     
-    console.log('✅ [Submit Review] Review created with sentiment:', review.sentiment);
+    console.log('✅ [Submit Review] Review created, starting background sentiment analysis...');
 
     // Update order
     order.isReviewed = true;
     await order.save();
 
-    // Update vendor review summary only if sentiment was successfully analyzed
-    if (sentiment !== 'pending') {
-      await Vendor.findByIdAndUpdate(order.vendorId, {
-        $inc: {
-          [`reviewSummary.${sentiment}`]: 1,
-          'reviewSummary.total': 1,
-        },
+    // Analyze sentiment in background (don't wait for it!)
+    analyzeSentimentWithRetry(comment)
+      .then(async (sentiment) => {
+        console.log('🎯 [Background] Sentiment analysis completed:', sentiment);
+        
+        // Update the review with sentiment
+        review.sentiment = sentiment;
+        await review.save();
+        
+        // Update vendor review summary
+        if (sentiment !== 'pending') {
+          await Vendor.findByIdAndUpdate(order.vendorId, {
+            $inc: {
+              [`reviewSummary.${sentiment}`]: 1,
+              'reviewSummary.total': 1,
+            },
+          });
+          console.log('✅ [Background] Vendor stats updated');
+        }
+      })
+      .catch((error) => {
+        console.error('❌ [Background] Sentiment analysis failed:', error.message);
+        // Review is already saved with 'pending' status, user already got response
       });
-    }
 
+    // Return immediately (don't wait for sentiment analysis!)
     res.status(201).json(review);
   } catch (error) {
     console.error(error);

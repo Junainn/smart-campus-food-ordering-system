@@ -27,9 +27,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only redirect on 401 if user was previously authenticated
+    // Don't redirect on login attempts
+    if (error.response?.status === 401 && !error.config.url.includes('/login')) {
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Redirect based on the URL path
+      const currentPath = window.location.pathname;
+      if (currentPath.startsWith('/vendor')) {
+        window.location.href = '/vendor/login';
+      } else {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

@@ -8,11 +8,15 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["food", "ordering", "cuet"],
+  "keywords": [
+    "food",
+    "ordering",
+    "cuet"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@huggingface/inference": "^2.8.0",
+    "@huggingface/inference": "^4.13.5",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.0",
     "cors": "^2.8.5",
